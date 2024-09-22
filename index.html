@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to CSV Converter</title>
+    <style>
+        body {
+            background-color: #1e1e2e;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #262636;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 400px;
+        }
+        h1 {
+            color: #ffcc00;
+            margin-bottom: 20px;
+        }
+        label {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #ffcc00;
+            color: #1e1e2e;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .custom-file-upload:hover {
+            background-color: #ffaa00;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+            background-color: #ffcc00;
+            color: #1e1e2e;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover, select:hover {
+            background-color: #ffaa00;
+        }
+        .result {
+            color: #66ff66;
+            margin-top: 20px;
+        }
+        .error {
+            color: #ff6666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSON to CSV Converter</h1>
+        <label for="jsonFile" class="custom-file-upload">Choose JSON File</label>
+        <input type="file" id="jsonFile" accept=".json">
+        
+        <label for="csvOptions">CSV Options:</label>
+        <select id="csvOptions">
+            <option value="comma">Comma Delimited</option>
+            <option value="semicolon">Semicolon Delimited</option>
+            <option value="tab">Tab Delimited</option>
+        </select>
+
+        <button id="convertBtn">Convert to CSV</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('jsonFile').addEventListener('change', handleFileSelect);
+        document.getElementById('convertBtn').addEventListener('click', convertToCSV);
+
+        let jsonData = null;
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type === "application/json") {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        jsonData = JSON.parse(e.target.result).log;
+                        if (!jsonData || typeof jsonData !== 'object') {
+                            throw new Error('Invalid JSON format. Expected an object containing logs.');
+                        }
+                        document.getElementById('result').innerHTML = "<span class='result'>JSON file loaded successfully!</span>";
+                    } catch (error) {
+                        jsonData = null;
+                        document.getElementById('result').innerHTML = "<span class='error'>" + error.message + "</span>";
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                alert("Please upload a valid JSON file.");
+            }
+        }
+
+        function convertToCSV() {
+            if (!jsonData) {
+                document.getElementById('result').innerHTML = "<span class='error'>Please upload a valid JSON file first.</span>";
+                return;
+            }
+
+            const csvOption = document.getElementById('csvOptions').value;
+            let delimiter = ",";
+            switch (csvOption) {
+                case "comma":
+                    delimiter = ",";
+                    break;
+                case "semicolon":
+                    delimiter = ";";
+                    break;
+                case "tab":
+                    delimiter = "\t";
+                    break;
+            }
+
+            try {
+                const csv = jsonToCSV(jsonData, delimiter);
+                downloadCSV(csv, 'output.csv');
+            } catch (error) {
+                document.getElementById('result').innerHTML = "<span class='error'>" + error.message + "</span>";
+            }
+        }
+
+        function jsonToCSV(logs, delimiter) {
+            const csvRows = [];
+            const headers = ["log_id", "title", "timestamp", "category", "data", "params"];
+            csvRows.push(headers.join(delimiter));
+
+            for (const [logId, logDetails] of Object.entries(logs)) {
+                const { title, timestamp, category, data, params } = logDetails;
+
+                const dataStr = data ? JSON.stringify(data).replace(/"/g, '') : '';
+                const paramsStr = params ? JSON.stringify(params).replace(/"/g, '') : '';
+
+                csvRows.push([logId, title, timestamp, category, dataStr, paramsStr].join(delimiter));
+            }
+
+            return csvRows.join("\n");
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', filename);
+            a.click();
+            document.getElementById('result').innerHTML = "<span class='result'>CSV file downloaded successfully!</span>";
+        }
+    </script>
+</body>
+</html>
+
